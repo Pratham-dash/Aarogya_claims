@@ -1,0 +1,27 @@
+# Render Blueprint for the API. The frontend is deployed separately on Vercel.
+services:
+  - type: web
+    name: aarogya-claims-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
+      - key: SEED_ON_START
+        value: "true"
+      - key: DB_POOL_MAX
+        value: 20
+      - key: DB_POOL_MIN
+        value: 2
