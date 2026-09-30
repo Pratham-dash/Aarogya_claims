@@ -7,9 +7,12 @@ A claims management platform with two portals on a shared API and database:
 | Item | Link |
 |---|---|
 | **Live application** | https://aarogya-claims-seven.vercel.app |
+
 | **API (health check)** | https://aarogya-claims-vwl1.onrender.com/api/health |
+
 | **GitHub repository** | https://github.com/Pratham-dash/Aarogya_claims |
-| **Demo (screenshots / video)** | `<add link here, or place screenshots in /docs/screenshots>` |
+
+| **Demo (screenshots / video)** |  |
  
 **Quick start for reviewers:** open the live application and sign in with the credentials in [section 7](#7-mock-login-credentials) (there are "demo account" buttons on the login page).
  
