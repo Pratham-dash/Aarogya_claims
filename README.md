@@ -12,7 +12,20 @@ A claims management platform with two portals on a shared API and database:
 
 | **GitHub repository** | https://github.com/Pratham-dash/Aarogya_claims |
 
-| **Demo (screenshots / video)** |  |
+**Assumptions and tradeoffs**
+1.Stateless JWT. There is no logout on the server and no revocation. The role is baked into the token, so a role change wouldn't take effect until the token expires.
+2.Client route guards are only UX. The real enforcement is on the server through requireRole and the per-patient filters.
+404 instead of 403 for claims or documents you don't own, so IDs can't be probed.
+3.Claim name and email are editable on the form and are taken from the request body. The server does not force them to match the logged-in patient. The claim is linked to the patient by id, not by that email.
+4.The client-declared MIME type is trusted for the first filter. The real checks are the PDF magic bytes and sharp decoding images.
+5.Images get compressed twice (browser WebP at 0.8, then server WebP at q75). That saves bandwidth and storage, but it is lossy twice, which could make a blurry receipt harder to read.
+6.Insurer decisions can be changed at any time. There is no lock and no audit history beyond the last reviewer and time.
+7.Pagination uses skip/limit plus a count query. That is fine for this size but gets slower on very deep pages of a large collection.
+8.Login timing. bcrypt.compare only runs when the user exists, so response time could reveal whether an email is registered. This is minor, and the login is rate limited (30 attempts per 15 minutes per IP).
+9.SEED_ON_START=true is set in render.yaml, so the demo accounts with known passwords would exist in production. That suits a demo. For real use, turn it off.
+10.Free-tier realities: Render's free service sleeps when idle, so the first request is slow and the in-memory cache resets.
+11.Money is stored as plain numbers (not integer paise) and formatted as INR in the UI.
+12.Dependencies: multer 1.x shows the deprecation and vulnerability warning you saw. Upgrading to 2.x would be a sensible follow-up. 
  
 **Quick start for reviewers:** open the live application and sign in with the credentials in [section 7](#7-mock-login-credentials) (there are "demo account" buttons on the login page).
  
