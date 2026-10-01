@@ -12,7 +12,7 @@ A claims management platform with two portals on a shared API and database:
 
 | **GitHub repository** | https://github.com/Pratham-dash/Aarogya_claims |
 
-## 11. Assumptions
+##  Assumptions
  
 Every ambiguity in the brief was resolved as follows:
  
