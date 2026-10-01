@@ -12,22 +12,28 @@ A claims management platform with two portals on a shared API and database:
 
 | **GitHub repository** | https://github.com/Pratham-dash/Aarogya_claims |
 
-**Assumptions and tradeoffs**
-1.Stateless JWT. There is no logout on the server and no revocation. The role is baked into the token, so a role change wouldn't take effect until the token expires.
-2.Client route guards are only UX. The real enforcement is on the server through requireRole and the per-patient filters.
-404 instead of 403 for claims or documents you don't own, so IDs can't be probed.
-3.Claim name and email are editable on the form and are taken from the request body. The server does not force them to match the logged-in patient. The claim is linked to the patient by id, not by that email.
-4.The client-declared MIME type is trusted for the first filter. The real checks are the PDF magic bytes and sharp decoding images.
-5.Images get compressed twice (browser WebP at 0.8, then server WebP at q75). That saves bandwidth and storage, but it is lossy twice, which could make a blurry receipt harder to read.
-6.Insurer decisions can be changed at any time. There is no lock and no audit history beyond the last reviewer and time.
-7.Pagination uses skip/limit plus a count query. That is fine for this size but gets slower on very deep pages of a large collection.
-8.Login timing. bcrypt.compare only runs when the user exists, so response time could reveal whether an email is registered. This is minor, and the login is rate limited (30 attempts per 15 minutes per IP).
-9.SEED_ON_START=true is set in render.yaml, so the demo accounts with known passwords would exist in production. That suits a demo. For real use, turn it off.
-10.Free-tier realities: Render's free service sleeps when idle, so the first request is slow and the in-memory cache resets.
-11.Money is stored as plain numbers (not integer paise) and formatted as INR in the UI.
-12.Dependencies: multer 1.x shows the deprecation and vulnerability warning you saw. Upgrading to 2.x would be a sensible follow-up. 
+## 11. Assumptions
  
-**Quick start for reviewers:** open the live application and sign in with the credentials in [section 7](#7-mock-login-credentials) (there are "demo account" buttons on the login page).
+Every ambiguity in the brief was resolved as follows:
+ 
+1. **Uploaded files live in MongoDB**, not on disk, because free hosting has ephemeral filesystems. Allowed types are JPG, PNG, WebP and PDF, up to 10 MB. Images are converted to WebP.
+2. **A document is required** to submit a claim (the brief lists it as a captured field).
+3. **Claim ownership:** each claim is linked to the signed-in patient. Name and email are pre-filled from the account but editable, since the brief lists them as form fields. The patient dashboard shows only that patient's claims, based on account ownership, not the typed email.
+4. **Currency** is INR (₹), with amounts formatted in the `en-IN` locale.
+5. **Approving requires an approved amount**, which must be greater than 0 and not exceed the claimed amount (partial approvals are allowed). **Rejecting requires a comment** so the patient learns why. Rejected claims store `approvedAmount = null`.
+6. **Decisions can be revised.** An insurer may reopen an approved or rejected claim and change the decision; only the latest decision, `reviewedBy` and `reviewedAt` are kept (no audit trail). The `Pending` status can only be set by a new claim.
+7. **Any insurer can review any claim.** There is a single insurer role with no teams or assignment.
+8. **Date filters use the insurer's local calendar days** (the browser sends the start of the "From" day and the end of the "To" day as ISO instants, both inclusive). Submission dates are stored in UTC.
+9. **Token storage:** the JWT is kept in `localStorage`, which keeps the deployment simple across two domains. This is exposed to XSS; a production system would use `httpOnly` cookies.
+10. **Cache scope:** the server cache is per-process, which is correct for the single instance on the free tier. Multiple instances would need a shared cache such as Redis.
+11. **Insurer comments are a single note per claim** (the data model has one `Insurer Comments` string), not a comment thread.
+## 12. Not completed / known limitations
+ 
+- No automated test suite (manual checklist below). No registration, password reset or email verification (explicitly out of scope).
+- Sign-out is client-side: the JWT stays valid until it expires (no server-side revocation list).
+- Documents are not virus-scanned. Only type, size and file signature/decoding are validated.
+- NestJS (preferred but optional) was not used; Express was chosen for debuggability.
+- The free Render instance sleeps when idle, so the first request after a quiet period is slow (see section 10).
  
 > The API runs on a free Render instance that sleeps when idle. If the first sign-in is slow, wait 30 to 60 seconds, or open the API health link first to wake it up.
  
@@ -286,28 +292,7 @@ The application is deployed on free tiers of three services, with the code hoste
 - The Vercel deployment-specific URLs (with random characters) change on every build. Use the stable domain above, and keep `CLIENT_URL` set to it.
 ---
  
-## 11. Assumptions
- 
-Every ambiguity in the brief was resolved as follows:
- 
-1. **Uploaded files live in MongoDB**, not on disk, because free hosting has ephemeral filesystems. Allowed types are JPG, PNG, WebP and PDF, up to 10 MB. Images are converted to WebP.
-2. **A document is required** to submit a claim (the brief lists it as a captured field).
-3. **Claim ownership:** each claim is linked to the signed-in patient. Name and email are pre-filled from the account but editable, since the brief lists them as form fields. The patient dashboard shows only that patient's claims, based on account ownership, not the typed email.
-4. **Currency** is INR (₹), with amounts formatted in the `en-IN` locale.
-5. **Approving requires an approved amount**, which must be greater than 0 and not exceed the claimed amount (partial approvals are allowed). **Rejecting requires a comment** so the patient learns why. Rejected claims store `approvedAmount = null`.
-6. **Decisions can be revised.** An insurer may reopen an approved or rejected claim and change the decision; only the latest decision, `reviewedBy` and `reviewedAt` are kept (no audit trail). The `Pending` status can only be set by a new claim.
-7. **Any insurer can review any claim.** There is a single insurer role with no teams or assignment.
-8. **Date filters use the insurer's local calendar days** (the browser sends the start of the "From" day and the end of the "To" day as ISO instants, both inclusive). Submission dates are stored in UTC.
-9. **Token storage:** the JWT is kept in `localStorage`, which keeps the deployment simple across two domains. This is exposed to XSS; a production system would use `httpOnly` cookies.
-10. **Cache scope:** the server cache is per-process, which is correct for the single instance on the free tier. Multiple instances would need a shared cache such as Redis.
-11. **Insurer comments are a single note per claim** (the data model has one `Insurer Comments` string), not a comment thread.
-## 12. Not completed / known limitations
- 
-- No automated test suite (manual checklist below). No registration, password reset or email verification (explicitly out of scope).
-- Sign-out is client-side: the JWT stays valid until it expires (no server-side revocation list).
-- Documents are not virus-scanned. Only type, size and file signature/decoding are validated.
-- NestJS (preferred but optional) was not used; Express was chosen for debuggability.
-- The free Render instance sleeps when idle, so the first request after a quiet period is slow (see section 10).
+
 ---
  
 ## 13. Manual test checklist
